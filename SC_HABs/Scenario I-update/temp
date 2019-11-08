@@ -1,0 +1,51 @@
+# consider the impact of nutrients
+Pdem  = Dict((layer[1]) => 0.1);
+Ndem  = Dict((layer[1]) => 0.1);
+ratioP  = Dict((layer[1]) => 0.1);
+ratioN= Dict((layer[1]) => 0.1);
+for l in layer
+    if l <= lm
+        Pdem[l] = 1.2*sum(rcorθI[a,ll]*X[a,d-1,ll]*(rcorθI[a,ll]>=0) for a in algae for ll in layer)/length(layer); # P demand for algae to finish growth
+        Ndem[l] = 8.3*sum(rcorθI[a,ll]*X[a,d-1,ll]*(rcorθI[a,ll]>=0)*(feature[a]!="Yes") for a in algae for ll in layer)/length(layer); # N demand for algae to finish growth
+    else
+        Pdem[l] = 1.2*sum(rcorθI[a,l]*X[a,d-1,l]*(rcorθI[a,l]>=0) for a in algae); # P demand for algae to finish growth
+        Ndem[l] = 8.3*sum(rcorθI[a,l]*X[a,d-1,l]*(rcorθI[a,l]>=0)*(feature[a]!="Yes") for a in algae); # N demand for algae to finish growth
+    end
+    #print(Pdem[l])
+    ratioP[l] = 1; # the ratio of available P over demanded P
+    ratioN[l] = 1; # the ratio of available N over demanded N
+    if Pdem[l] > (P[d-1]-3)
+        if P[d-1] >= 3
+            ratioP[l] = (P[d-1]-3)/Pdem[l];
+        else
+            ratioP[l] = 0;
+        end
+    end
+    if Ndem[l] > (N[d-1]-80)
+        if N[d-1] >= 80
+                ratioN[l] = (N[d-1]-80)/Ndem[l];
+        else
+            ratioN[l] = 0;
+        end
+    end
+    #print(ratioP[l]);
+end
+println(sum(Pdem[ll] for ll in layer)/length(layer));
+rP   = Dict((algae[1],layer[1]) => 1e20); # growth rate limited by P [day-1]
+rN   = Dict((algae[1],layer[1]) => 1e20); # growth rate limited by N [day-1]
+for l in layer
+    for a in algae
+         if rcorθI[a,l] >= 0;
+             rP[(a,l)] = ratioP[l] * rcorθI[a,l];
+             if feature[a] != "Yes"
+                 rN[(a,l)] = ratioN[l] * rcorθI[a,l];
+             else
+                 rN[(a,l)] = 1e20;
+             end
+         else
+             rP[(a,l)] = 1e20;
+             rN[(a,l)] = 1e20;
+         end
+         r[(a,l)] = min(rcorθI[a,l], rP[a,l], rN[a,l]);
+    end
+end
